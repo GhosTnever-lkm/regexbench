@@ -2,6 +2,8 @@
 
 RegexBench is a local-first JavaScript regular-expression workbench. Test a pattern against sample text, inspect matches and capture groups, and preview or export replacements without sending the text to a service.
 
+![RegexBench: regular expression workbench with match explorer](docs/screenshot.png)
+
 ## Features
 
 - JavaScript regex syntax and flags, including named capture groups.
