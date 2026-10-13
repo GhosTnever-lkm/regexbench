@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.3 - 2026-10-13
+
+- Cancel obsolete regex work when editing or clearing fields so an older result cannot repopulate the cleared workspace.
+- Clear the execution timeout when a Worker fails, avoiding a false timeout message.
+- Return HTTP 400 for malformed encoded request paths instead of letting a bad URL crash the local server.
+
 ## 0.1.2 - 2026-10-11
 
 - Add a real screenshot of the app to the README.

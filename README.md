@@ -11,6 +11,7 @@ RegexBench is a local-first JavaScript regular-expression workbench. Test a patt
 - Replacement preview with `$1` and `$<name>` support.
 - Import a plain text file up to 200 KB; export the replacement preview.
 - Input limits, a 1,000-match cap, and a dedicated Web Worker terminated after 300 ms.
+- Editing or clearing the workspace cancels obsolete worker jobs so stale results cannot replace newer input.
 - Last-used pattern, flags, replacement and sample text saved in browser local storage.
 - Responsive layout and keyboard-accessible controls.
 
