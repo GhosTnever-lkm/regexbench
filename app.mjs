@@ -10,12 +10,22 @@ const countEl = $('#count');
 const workerUrl = new URL('./worker.js', import.meta.url);
 let worker;
 let timer;
+let debounceTimer;
 let runId = 0;
+
+function cancelPendingRun() {
+  runId += 1;
+  clearTimeout(timer);
+  worker?.terminate();
+  worker = null;
+}
 
 function getWorker() {
   if (!worker) {
-    worker = new Worker(workerUrl, { type: 'module' });
-    worker.onmessage = ({ data }) => {
+    const activeWorker = new Worker(workerUrl, { type: 'module' });
+    worker = activeWorker;
+    activeWorker.onmessage = ({ data }) => {
+      if (worker !== activeWorker) return;
       if (data.id !== runId) return;
       clearTimeout(timer);
       if (!data.ok) {
@@ -52,11 +62,13 @@ function getWorker() {
       if (data.truncated) statusEl.textContent += ' Предпросмотр обрезан до 200 000 символов.';
       persist();
     };
-    worker.onerror = () => {
+    activeWorker.onerror = () => {
+      if (worker !== activeWorker) return;
+      clearTimeout(timer);
       statusEl.textContent = 'Не удалось выполнить шаблон. Проверьте его синтаксис и повторите.';
       statusEl.className = 'status error';
-      worker.terminate();
       worker = null;
+      activeWorker.terminate();
     };
   }
   return worker;
@@ -69,6 +81,8 @@ function persist() {
 }
 
 function run() {
+  clearTimeout(debounceTimer);
+  cancelPendingRun();
   const pattern = patternEl.value;
   const flags = flagsEl.value;
   const text = sampleEl.value;
@@ -78,10 +92,9 @@ function run() {
     matchesEl.replaceChildren();
     previewEl.textContent = text;
     countEl.textContent = '0';
+    persist();
     return;
   }
-  clearTimeout(timer);
-  runId += 1;
   const id = runId;
   statusEl.textContent = 'Проверяю шаблон…';
   statusEl.className = 'status';
@@ -98,9 +111,9 @@ function run() {
   getWorker().postMessage({ id, pattern, flags, text, replacement: replacementEl.value });
 }
 
-for (const element of [patternEl, flagsEl, sampleEl, replacementEl]) element.addEventListener('input', () => { clearTimeout(window.runDelay); window.runDelay = setTimeout(run, 130); });
+for (const element of [patternEl, flagsEl, sampleEl, replacementEl]) element.addEventListener('input', () => { clearTimeout(debounceTimer); debounceTimer = setTimeout(run, 130); });
 $('#run').addEventListener('click', run);
-$('#clear').addEventListener('click', () => { patternEl.value = ''; flagsEl.value = 'g'; replacementEl.value = ''; sampleEl.value = ''; matchesEl.replaceChildren(); previewEl.textContent = ''; countEl.textContent = '0'; statusEl.textContent = 'Поля очищены.'; persist(); });
+$('#clear').addEventListener('click', () => { clearTimeout(debounceTimer); cancelPendingRun(); patternEl.value = ''; flagsEl.value = 'g'; replacementEl.value = ''; sampleEl.value = ''; matchesEl.replaceChildren(); previewEl.textContent = ''; countEl.textContent = '0'; statusEl.textContent = 'Поля очищены.'; statusEl.className = 'status'; persist(); });
 $('#copy-preview').addEventListener('click', async () => {
   try { await navigator.clipboard.writeText(previewEl.textContent); statusEl.textContent = 'Предпросмотр скопирован.'; }
   catch { statusEl.textContent = 'Браузер не разрешил доступ к буферу обмена.'; }
