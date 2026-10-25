@@ -1,0 +1,42 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Verify version and test
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          package_version="$(node -p 'require("./package.json").version')"
+          test "$version" = "$package_version"
+          npm run check
+      - name: Build portable app archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="$GITHUB_REF_NAME"
+          stage="dist/RegexBench-$tag"
+          mkdir -p "$stage"
+          cp index.html styles.css app.mjs core.mjs worker.js icon.svg server.mjs package.json README.md CHANGELOG.md LICENSE "$stage/"
+          archive="dist/RegexBench-$tag.zip"
+          (cd dist && zip -qr "$(basename "$archive")" "$(basename "$stage")")
+          (cd dist && sha256sum "$(basename "$archive")" > "$(basename "$archive").sha256")
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" "dist/RegexBench-$GITHUB_REF_NAME.zip" "dist/RegexBench-$GITHUB_REF_NAME.zip.sha256" --title "RegexBench $GITHUB_REF_NAME" --generate-notes
