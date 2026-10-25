@@ -16,8 +16,13 @@ self.onmessage = ({ data }) => {
     const lineStarts = [0];
     for (let i = 0; i < text.length; i += 1) if (text.charCodeAt(i) === 10) lineStarts.push(i + 1);
     const matches = [];
+    let capped = false;
     let match;
     while ((match = regex.exec(text)) !== null) {
+      if (matches.length >= MAX_MATCHES) {
+        capped = true;
+        break;
+      }
       let low = 0;
       let high = lineStarts.length;
       while (low + 1 < high) {
@@ -28,7 +33,6 @@ self.onmessage = ({ data }) => {
       const line = low + 1;
       const column = match.index - lineStarts[low] + 1;
       matches.push({ index: match.index, line, column, value: match[0], groups: match.slice(1), namedGroups: match.groups ?? null });
-      if (matches.length >= MAX_MATCHES) break;
       // RegExp.exec advances after empty matches for Unicode mode only. Advance explicitly otherwise.
       if (match[0] === '') {
         const point = text.codePointAt(regex.lastIndex);
@@ -40,7 +44,7 @@ self.onmessage = ({ data }) => {
     let preview = text.replace(replacementRegex, replacement);
     const truncated = preview.length > MAX_TEXT_LENGTH;
     if (truncated) preview = preview.slice(0, MAX_TEXT_LENGTH);
-    self.postMessage({ id, ok: true, matches, preview, truncated, capped: matches.length === MAX_MATCHES });
+    self.postMessage({ id, ok: true, matches, preview, truncated, capped });
   } catch (error) {
     self.postMessage({ id, ok: false, error: error instanceof Error ? error.message : 'Ошибка регулярного выражения.' });
   }
